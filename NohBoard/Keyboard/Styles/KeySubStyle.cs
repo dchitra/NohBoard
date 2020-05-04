@@ -86,6 +86,7 @@ namespace ThoNohT.NohBoard.Keyboard.Styles
                 BackgroundImageFileName = this.BackgroundImageFileName,
                 Text = this.Text.Clone(),
                 Outline = this.Outline.Clone(),
+                OutlineWidth = this.OutlineWidth,
                 ShowOutline = this.ShowOutline,
                 Font = this.Font.Clone()
             };
@@ -122,6 +123,24 @@ namespace ThoNohT.NohBoard.Keyboard.Styles
             tex.ScaleTransform(boundingBox.Width / imgBb.Width, boundingBox.Height / imgBb.Height);
 
             return tex;
+        }
+
+        /// <summary>
+        /// Checks whether the style has changes relative to the specified other style.
+        /// </summary>
+        /// <param name="other">The style to compare against.</param>
+        /// <returns>True if the style has changes, false otherwise.</returns>
+        public bool IsChanged(KeySubStyle other)
+        {
+            if (this.Background.IsChanged(other.Background)) return true;
+            if (this.BackgroundImageFileName != other.BackgroundImageFileName) return true;
+            if (this.Font.IsChanged(other.Font)) return true;
+            if (this.Text != other.Text) return true;
+            if (this.Outline.IsChanged(other.Outline)) return true;
+            if (this.OutlineWidth != other.OutlineWidth) return true;
+            if (this.ShowOutline != other.ShowOutline) return true;
+
+            return false;
         }
     }
 }

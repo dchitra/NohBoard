@@ -40,7 +40,7 @@ namespace ThoNohT.NohBoard.Forms
         /// <summary>
         /// The keyboard element that is currently being manipulated.
         /// </summary>
-        private Tuple<int, ElementDefinition> currentlyManipulating = null;
+        private (int id, ElementDefinition definition)? currentlyManipulating = null;
 
         /// <summary>
         /// The currently manipulated element, at the point where the manipulation started.
@@ -90,18 +90,6 @@ namespace ThoNohT.NohBoard.Forms
         /// The element that was last copied.
         /// </summary>
         private ElementDefinition clipboard;
-
-        /// <summary>
-        /// A stack containing the previous edits made by the user.
-        /// </summary>
-        private readonly Stack<KeyboardDefinition> undoHistory = new Stack<KeyboardDefinition>();
-        private readonly Stack<KeyboardStyle> undoHistoryStyle = new Stack<KeyboardStyle>();
-
-        /// <summary>
-        /// A stack containing the recently undone edits.
-        /// </summary>
-        private readonly Stack<KeyboardDefinition> redoHistory = new Stack<KeyboardDefinition>();
-        private readonly Stack<KeyboardStyle> redoHistoryStyle = new Stack<KeyboardStyle>();
 
         /// <summary>
         /// Whether the main menu is open. This variable is set to true when the main menu is opened. The next
@@ -175,7 +163,6 @@ namespace ThoNohT.NohBoard.Forms
                 if (KeyboardState.AltDown)
                 {
                     this.movingEverythingStart = GlobalSettings.CurrentDefinition.Clone();
-                    this.PushUndoHistory();
                     this.movingEverythingFrom = e.Location;
                 }
 
@@ -183,13 +170,13 @@ namespace ThoNohT.NohBoard.Forms
             }
 
             var indexToManipulate = GlobalSettings.CurrentDefinition.Elements.IndexOf(toManipulate);
-            this.currentlyManipulating = Tuple.Create(indexToManipulate, toManipulate);
+            this.currentlyManipulating = (indexToManipulate, toManipulate);
             this.highlightedDefinition = null;
             this.manipulationStart = toManipulate;
             this.cumulManipulation = new Size();
 
-            this.PushUndoHistory();
-            GlobalSettings.CurrentDefinition = GlobalSettings.CurrentDefinition.RemoveElement(toManipulate);
+            // Don't save history, we're in the middle of a transformation.
+            GlobalSettings.Settings.UpdateDefinition(GlobalSettings.CurrentDefinition.RemoveElement(toManipulate), false);
 
             this.ResetBackBrushes();
         }
@@ -212,7 +199,9 @@ namespace ThoNohT.NohBoard.Forms
                     var diff = e.Location - this.movingEverythingFrom;
                     newDef.Elements.Add(element.Translate(diff.Width, diff.Height));
                 }
-                GlobalSettings.CurrentDefinition = newDef;
+
+                // Don't push history, we're in the middle of a transformation.
+                GlobalSettings.Settings.UpdateDefinition(newDef, false);
                 this.ResetBackBrushes();
             }
 
@@ -221,7 +210,7 @@ namespace ThoNohT.NohBoard.Forms
                 var diff = (TPoint)e.Location - this.currentManipulationPoint;
                 this.cumulManipulation += diff;
 
-                this.currentlyManipulating = Tuple.Create(this.currentlyManipulating.Item1, this.manipulationStart.Manipulate(this.cumulManipulation));
+                this.currentlyManipulating = (this.currentlyManipulating.Value.id, this.manipulationStart.Manipulate(this.cumulManipulation));
                 this.currentManipulationPoint = e.Location;
             }
             else
@@ -250,6 +239,8 @@ namespace ThoNohT.NohBoard.Forms
             // Always reset this value when releasing the mouse.
             if (this.movingEverythingFrom != null)
             {
+                // Store the current state in undo history.
+                GlobalSettings.Settings.UpdateDefinition(GlobalSettings.CurrentDefinition, true);
                 this.movingEverythingFrom = null;
                 this.ResetBackBrushes();
             }
@@ -259,9 +250,11 @@ namespace ThoNohT.NohBoard.Forms
 
             if (!this.mnuToggleEditMode.Checked || this.currentlyManipulating == null) return;
 
-            GlobalSettings.CurrentDefinition = GlobalSettings.CurrentDefinition.AddElement(
-                this.currentlyManipulating.Item2,
-                this.currentlyManipulating.Item1);
+            GlobalSettings.Settings.UpdateDefinition(
+                GlobalSettings.CurrentDefinition.AddElement(
+                    this.currentlyManipulating.Value.definition,
+                    this.currentlyManipulating.Value.id),
+                true);
 
             if (this.cumulManipulation.Length() == 0 && this.selectedDefinition != null)
             {
@@ -269,14 +262,15 @@ namespace ThoNohT.NohBoard.Forms
                   .Where(x => x.StartManipulating(e.Location, KeyboardState.AltDown, translateOnly: KeyboardState.CtrlDown))
                   .Reverse();
 
-                var nextelementUnderCursor = elementsUnderCursor.SkipWhile(el => el.Id != this.currentlyManipulating.Item2.Id).Skip(1).FirstOrDefault()
+                var nextelementUnderCursor = elementsUnderCursor
+                    .SkipWhile(el => el.Id != this.currentlyManipulating.Value.definition.Id).Skip(1).FirstOrDefault()
                     ?? elementsUnderCursor.FirstOrDefault();
                 this.selectedDefinition = nextelementUnderCursor;
             }
             else
             {
                 // Whatever was being manipulated (or not yet, but at least pressed down on) will now be selected.
-                this.selectedDefinition = this.currentlyManipulating.Item2;
+                this.selectedDefinition = this.currentlyManipulating.Value.definition;
             }
             this.currentlyManipulating = null;
             this.manipulationStart = null;
@@ -295,10 +289,8 @@ namespace ThoNohT.NohBoard.Forms
         {
             this.menuOpen = false;
 
-            this.PushUndoHistory();
-
-            GlobalSettings.CurrentDefinition = GlobalSettings.CurrentDefinition
-                .MoveElementDown(this.relevantDefinition, int.MaxValue);
+            GlobalSettings.Settings.UpdateDefinition(
+                GlobalSettings.CurrentDefinition.MoveElementDown(this.relevantDefinition, int.MaxValue), true);
             this.ResetBackBrushes();
         }
 
@@ -309,10 +301,8 @@ namespace ThoNohT.NohBoard.Forms
         {
             this.menuOpen = false;
 
-            this.PushUndoHistory();
-
-            GlobalSettings.CurrentDefinition = GlobalSettings.CurrentDefinition
-                .MoveElementDown(this.relevantDefinition, 1);
+            GlobalSettings.Settings.UpdateDefinition(
+                GlobalSettings.CurrentDefinition.MoveElementDown(this.relevantDefinition, 1), true);
             this.ResetBackBrushes();
         }
 
@@ -323,10 +313,8 @@ namespace ThoNohT.NohBoard.Forms
         {
             this.menuOpen = false;
 
-            this.PushUndoHistory();
-
-            GlobalSettings.CurrentDefinition = GlobalSettings.CurrentDefinition
-                .MoveElementDown(this.relevantDefinition, -1);
+            GlobalSettings.Settings.UpdateDefinition(
+                GlobalSettings.CurrentDefinition.MoveElementDown(this.relevantDefinition, -1), true);
             this.ResetBackBrushes();
         }
 
@@ -337,10 +325,8 @@ namespace ThoNohT.NohBoard.Forms
         {
             this.menuOpen = false;
 
-            this.PushUndoHistory();
-
-            GlobalSettings.CurrentDefinition = GlobalSettings.CurrentDefinition
-                .MoveElementDown(this.relevantDefinition, -int.MaxValue);
+            GlobalSettings.Settings.UpdateDefinition(
+                GlobalSettings.CurrentDefinition.MoveElementDown(this.relevantDefinition, -int.MaxValue), true);
             this.ResetBackBrushes();
         }
 
@@ -363,7 +349,6 @@ namespace ThoNohT.NohBoard.Forms
             // Manipulations by keyboard keys.
             if (this.selectedDefinition != null && new[] { Keys.Up, Keys.Right, Keys.Down, Keys.Left }.Contains(keyCode))
             {
-                this.PushUndoHistory();
                 ElementDefinition newDefinition;
                 var index = GlobalSettings.CurrentDefinition.Elements.IndexOf(this.selectedDefinition);
                 switch (keyCode)
@@ -384,8 +369,10 @@ namespace ThoNohT.NohBoard.Forms
                         throw new Exception("If this happens, the if statement around this switch is incorrect.");
                 }
 
-                GlobalSettings.CurrentDefinition = GlobalSettings.CurrentDefinition
-                    .RemoveElement(this.selectedDefinition).AddElement(newDefinition, index);
+                GlobalSettings.Settings.UpdateDefinition(
+                    GlobalSettings.CurrentDefinition
+                        .RemoveElement(this.selectedDefinition).AddElement(newDefinition, index),
+                    true);
 
                 this.selectedDefinition = newDefinition;
                 this.ResetBackBrushes();
@@ -406,23 +393,29 @@ namespace ThoNohT.NohBoard.Forms
             {
                 if ((keyData & Keys.Shift) == 0)
                 {
-                    if (!this.undoHistory.Any()) return base.ProcessCmdKey(ref msg, keyData);
-
-                    this.redoHistory.Push(GlobalSettings.CurrentDefinition);
-                    this.redoHistoryStyle.Push(GlobalSettings.CurrentStyle.Clone());
-                    GlobalSettings.CurrentDefinition = this.undoHistory.Pop();
-                    GlobalSettings.CurrentStyle = this.undoHistoryStyle.Pop();
-                    this.ClientSize =
-                        new Size(GlobalSettings.CurrentDefinition.Width, GlobalSettings.CurrentDefinition.Height);
+                    if (GlobalSettings.Settings.Undo())
+                    {
+                        this.ClientSize = new Size(
+                          GlobalSettings.CurrentDefinition.Width,
+                          GlobalSettings.CurrentDefinition.Height);
+                    }
+                    else
+                    {
+                        return base.ProcessCmdKey(ref msg, keyData);
+                    }
                 }
                 else
                 {
-                    if (!this.redoHistory.Any()) return base.ProcessCmdKey(ref msg, keyData);
-
-                    this.undoHistory.Push(GlobalSettings.CurrentDefinition);
-                    this.undoHistoryStyle.Push(GlobalSettings.CurrentStyle.Clone());
-                    GlobalSettings.CurrentDefinition = this.redoHistory.Pop();
-                    GlobalSettings.CurrentStyle = this.redoHistoryStyle.Pop();
+                    if (GlobalSettings.Settings.Redo())
+                    {
+                        this.ClientSize = new Size(
+                          GlobalSettings.CurrentDefinition.Width,
+                          GlobalSettings.CurrentDefinition.Height);
+                    }
+                    else
+                    {
+                        return base.ProcessCmdKey(ref msg, keyData);
+                    }
                 }
 
                 this.selectedDefinition = null;
@@ -434,20 +427,9 @@ namespace ThoNohT.NohBoard.Forms
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
-        /// <summary>
-        /// Pushes the current keyboard state into the undo history and clears the redo history.
-        /// </summary>
-        private void PushUndoHistory()
-        {
-            this.undoHistory.Push(GlobalSettings.CurrentDefinition);
-            this.undoHistoryStyle.Push(GlobalSettings.CurrentStyle.Clone());
-            this.redoHistory.Clear();
-        }
-
         #endregion Keyboard input handling
 
         #region Element management
-
 
         /// <summary>
         /// Handles setting the menu open variable to false when esc is pressed.
@@ -462,7 +444,7 @@ namespace ThoNohT.NohBoard.Forms
             if (e.KeyCode == Keys.C && e.Control && this.mnuToggleEditMode.Checked)
             {
                 if (this.selectedDefinition == null) return;
-                this.clipboard = this.selectedDefinition.Clone();
+                this.clipboard = this.selectedDefinition;
             }
 
             // Paste whatever element is in the clipboard, at the cursor position.
@@ -478,18 +460,23 @@ namespace ThoNohT.NohBoard.Forms
                 var oldPos = this.clipboard.GetBoundingBox().GetCenter();
                 var dist = newPos - oldPos;
 
-                this.PushUndoHistory();
-
-                // Copy the element with a new id.
-                var elementToAdd = this.clipboard.SetId(GlobalSettings.CurrentDefinition.GetNextId())
+                // Copy the element with a new id, this also clones the element to facilitate multiple pastes.
+                var elementToAdd = this.clipboard
+                    .SetId(GlobalSettings.CurrentDefinition.GetNextId())
                     .Translate(dist.Width, dist.Height);
-                GlobalSettings.CurrentDefinition = GlobalSettings.CurrentDefinition.AddElement(elementToAdd);
+
+                var newDefinition = GlobalSettings.CurrentDefinition.AddElement(elementToAdd);
 
                 // Set the style if the original one had a custom style.
-                if (GlobalSettings.CurrentStyle.ElementStyles.ContainsKey(this.clipboard.Id))
+                if (GlobalSettings.CurrentStyle.ElementIsStyled(this.clipboard.Id))
                 {
-                    GlobalSettings.CurrentStyle.ElementStyles.Add(elementToAdd.Id,
-                        GlobalSettings.CurrentStyle.ElementStyles[this.clipboard.Id].Clone());
+                    var newStyle = GlobalSettings.CurrentStyle
+                        .SetElementStyle(elementToAdd.Id, GlobalSettings.CurrentStyle.ElementStyles[this.clipboard.Id]);
+                    GlobalSettings.Settings.UpdateBoth(newDefinition, newStyle, true);
+                }
+                else
+                {
+                    GlobalSettings.Settings.UpdateDefinition(newDefinition, true);
                 }
 
                 this.selectedDefinition = elementToAdd;
@@ -507,10 +494,7 @@ namespace ThoNohT.NohBoard.Forms
             if (!this.mnuToggleEditMode.Checked) return;
             if (this.highlightedDefinition != null) return;
 
-            this.PushUndoHistory();
-
-            GlobalSettings.CurrentDefinition = GlobalSettings.CurrentDefinition
-                .AddElement(definition);
+            GlobalSettings.Settings.UpdateDefinition(GlobalSettings.CurrentDefinition.AddElement(definition), true);
 
             this.ResetBackBrushes();
         }
@@ -616,14 +600,19 @@ namespace ThoNohT.NohBoard.Forms
             if (!this.mnuToggleEditMode.Checked) return;
             if (this.highlightedDefinition == null && this.selectedDefinition == null) return;
 
-            this.PushUndoHistory();
-
             var definitionToRemove = this.highlightedDefinition ?? this.selectedDefinition;
-            GlobalSettings.CurrentDefinition = GlobalSettings.CurrentDefinition
-                .RemoveElement(definitionToRemove);
+            var newDefinition = GlobalSettings.CurrentDefinition.RemoveElement(definitionToRemove);
 
-            if (GlobalSettings.CurrentStyle.ElementStyles.ContainsKey(definitionToRemove.Id))
-                GlobalSettings.CurrentStyle.ElementStyles.Remove(definitionToRemove.Id);
+            // Remove the style if the element had a style.
+            if (GlobalSettings.CurrentStyle.ElementIsStyled(definitionToRemove.Id))
+            {
+                var newStyle = GlobalSettings.CurrentStyle.RemoveElementStyle(definitionToRemove.Id);
+                GlobalSettings.Settings.UpdateBoth(newDefinition, newStyle, true);
+            }
+            else
+            {
+                GlobalSettings.Settings.UpdateDefinition(newDefinition, true);
+            }
 
             // Unset the definition everywhere because it no longer exists.
             this.highlightedDefinition = null;
@@ -648,13 +637,11 @@ namespace ThoNohT.NohBoard.Forms
             if (!this.mnuToggleEditMode.Checked) return;
             if (!(this.relevantDefinition is KeyDefinition)) return;
 
-            this.PushUndoHistory();
-
             var def = (KeyDefinition)this.relevantDefinition;
             var index = GlobalSettings.CurrentDefinition.Elements.IndexOf(def);
             var newDef = def.AddBoundary(this.currentManipulationPoint);
-            GlobalSettings.CurrentDefinition = GlobalSettings.CurrentDefinition
-                .RemoveElement(def).AddElement(newDef, index);
+            GlobalSettings.Settings.UpdateDefinition(
+                GlobalSettings.CurrentDefinition.RemoveElement(def).AddElement(newDef, index), true);
 
             // If we had a definition selected, the new one should now be selected.
             if (this.selectedDefinition != null) this.selectedDefinition = newDef;
@@ -682,12 +669,10 @@ namespace ThoNohT.NohBoard.Forms
                 return;
             }
 
-            this.PushUndoHistory();
-
             var index = GlobalSettings.CurrentDefinition.Elements.IndexOf(def);
             var newDef = def.RemoveBoundary();
-            GlobalSettings.CurrentDefinition = GlobalSettings.CurrentDefinition
-                .RemoveElement(def).AddElement(newDef, index);
+            GlobalSettings.Settings.UpdateDefinition(
+                GlobalSettings.CurrentDefinition.RemoveElement(def).AddElement(newDef, index), true);
 
             // If we had a definition selected, the new one should now be selected.
             if (this.selectedDefinition != null) this.selectedDefinition = newDef;
@@ -720,13 +705,17 @@ namespace ThoNohT.NohBoard.Forms
                     this.selectedDefinition = def;
                 }
 
-                this.PushUndoHistory();
-
                 var index = GlobalSettings.CurrentDefinition.Elements.IndexOf(def);
-                GlobalSettings.CurrentDefinition = GlobalSettings.CurrentDefinition
-                    .RemoveElement(def).AddElement(def, index);
+                GlobalSettings.Settings.UpdateDefinition(
+                    GlobalSettings.CurrentDefinition.RemoveElement(def).AddElement(def, index), false);
 
                 this.ResetBackBrushes();
+            }
+
+            // Local function to handle saving of the changed definition.
+            void OnDefinitionSaved()
+            {
+                GlobalSettings.Settings.UpdateDefinition(GlobalSettings.CurrentDefinition, true);
             }
 
             if (relevantElement is MouseKeyDefinition || relevantElement is MouseScrollDefinition)
@@ -734,6 +723,7 @@ namespace ThoNohT.NohBoard.Forms
                 using (var propertiesForm = new MouseElementPropertiesForm((KeyDefinition) relevantElement))
                 {
                     propertiesForm.DefinitionChanged += OnDefinitionChanged;
+                    propertiesForm.DefinitionSaved += OnDefinitionSaved;
 
                     propertiesForm.ShowDialog(this);
                     return;
@@ -745,6 +735,7 @@ namespace ThoNohT.NohBoard.Forms
                 using (var propertiesForm = new MouseSpeedPropertiesForm(mouseSpeedElement))
                 {
                     propertiesForm.DefinitionChanged += OnDefinitionChanged;
+                    propertiesForm.DefinitionSaved += OnDefinitionSaved;
 
                     propertiesForm.ShowDialog(this);
                     return;
@@ -756,6 +747,7 @@ namespace ThoNohT.NohBoard.Forms
                 using (var propertiesForm = new KeyboardKeyPropertiesForm(keyboardKeyElement))
                 {
                     propertiesForm.DefinitionChanged += OnDefinitionChanged;
+                    propertiesForm.DefinitionSaved += OnDefinitionSaved;
 
                     propertiesForm.ShowDialog(this);
                     return;
@@ -768,8 +760,6 @@ namespace ThoNohT.NohBoard.Forms
         /// <summary>
         /// Opens the keyboard properties form.
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void mnuKeyboardProperties_Click(object sender, EventArgs e)
         {
             this.menuOpen = false;
@@ -781,12 +771,16 @@ namespace ThoNohT.NohBoard.Forms
                     this.elementUnderCursor = null;
                     this.currentlyManipulating = null;
 
-                    this.PushUndoHistory();
-                    GlobalSettings.CurrentDefinition = def;
+                    GlobalSettings.Settings.UpdateDefinition(def, false);
 
                     this.ClientSize = new Size(def.Width, def.Height);
 
                     this.ResetBackBrushes();
+                };
+
+                propertiesForm.DefinitionSaved += () =>
+                {
+                    GlobalSettings.Settings.UpdateDefinition(GlobalSettings.CurrentDefinition, true);
                 };
 
                 propertiesForm.ShowDialog(this);
@@ -800,9 +794,7 @@ namespace ThoNohT.NohBoard.Forms
         {
             if (!this.mnuToggleEditMode.Checked) return;
 
-            this.PushUndoHistory();
-
-            GlobalSettings.CurrentDefinition = GlobalSettings.CurrentDefinition.Resize(this.ClientSize);
+            GlobalSettings.Settings.UpdateDefinition(GlobalSettings.CurrentDefinition.Resize(this.ClientSize), true);
 
             this.ResetBackBrushes();
         }
@@ -839,18 +831,26 @@ namespace ThoNohT.NohBoard.Forms
                     {
                         if (style.Loose == null && style.Pressed == null)
                         {
-                            if (GlobalSettings.CurrentStyle.ElementStyles.ContainsKey(id))
-                                GlobalSettings.CurrentStyle.ElementStyles.Remove(id);
+                            if (GlobalSettings.CurrentStyle.ElementIsStyled(id))
+                            {
+                                // Remove existing style.
+                                GlobalSettings.Settings
+                                    .UpdateStyle(GlobalSettings.CurrentStyle.RemoveElementStyle(id), false);
+                            }
                         }
                         else
                         {
-                            if (!GlobalSettings.CurrentStyle.ElementStyles.ContainsKey(id))
-                                GlobalSettings.CurrentStyle.ElementStyles.Add(id, style);
-                            else
-                                GlobalSettings.CurrentStyle.ElementStyles[id] = style;
+                            // Set style.
+                            GlobalSettings.Settings
+                                .UpdateStyle(GlobalSettings.CurrentStyle.SetElementStyle(id, style), false);
                         }
 
                         this.ResetBackBrushes();
+                    };
+
+                    styleForm.StyleSaved += () =>
+                    {
+                        GlobalSettings.Settings.UpdateStyle(GlobalSettings.CurrentStyle, true);
                     };
 
                     styleForm.ShowDialog(this);
@@ -867,18 +867,26 @@ namespace ThoNohT.NohBoard.Forms
                     {
                         if (style == null)
                         {
-                            if (GlobalSettings.CurrentStyle.ElementStyles.ContainsKey(id))
-                                GlobalSettings.CurrentStyle.ElementStyles.Remove(id);
+                            if (GlobalSettings.CurrentStyle.ElementIsStyled(id))
+                            {
+                                // Remove existing style.
+                                GlobalSettings.Settings
+                                    .UpdateStyle(GlobalSettings.CurrentStyle.RemoveElementStyle(id), false);
+                            }
                         }
                         else
                         {
-                            if (!GlobalSettings.CurrentStyle.ElementStyles.ContainsKey(id))
-                                GlobalSettings.CurrentStyle.ElementStyles.Add(id, style);
-                            else
-                                GlobalSettings.CurrentStyle.ElementStyles[id] = style;
+                            // Set style.
+                            GlobalSettings.Settings
+                                .UpdateStyle(GlobalSettings.CurrentStyle.SetElementStyle(id, style), false);
                         }
 
                         this.ResetBackBrushes();
+                    };
+
+                    styleForm.StyleSaved += () =>
+                    {
+                        GlobalSettings.Settings.UpdateStyle(GlobalSettings.CurrentStyle, true);
                     };
 
                     styleForm.ShowDialog(this);
@@ -903,8 +911,12 @@ namespace ThoNohT.NohBoard.Forms
             {
                 styleForm.StyleChanged += style =>
                 {
-                    GlobalSettings.CurrentStyle = style;
+                    GlobalSettings.Settings.UpdateStyle(style, false);
                     this.ResetBackBrushes();
+                };
+
+                styleForm.StyleSaved += () => {
+                    GlobalSettings.Settings.UpdateStyle(GlobalSettings.CurrentStyle, true);
                 };
                 styleForm.ShowDialog(this);
             }

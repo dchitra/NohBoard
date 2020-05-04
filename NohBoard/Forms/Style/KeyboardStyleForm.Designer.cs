@@ -70,6 +70,7 @@ namespace ThoNohT.NohBoard.Forms.Style
             this.looseKeys = new ThoNohT.NohBoard.Controls.KeySubStylePanel();
             this.lblKeyboard = new System.Windows.Forms.Label();
             this.defaultMouseSpeed = new ThoNohT.NohBoard.Controls.MouseSpeedStylePanel();
+            this.lblOutlineWarning = new System.Windows.Forms.Label();
             this.KeyboardGroup.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -91,7 +92,6 @@ namespace ThoNohT.NohBoard.Forms.Style
             this.txtBackgoundImage.Name = "txtBackgoundImage";
             this.txtBackgoundImage.Size = new System.Drawing.Size(100, 20);
             this.txtBackgoundImage.TabIndex = 4;
-            this.txtBackgoundImage.TextChanged += new System.EventHandler(this.txtBackgoundImage_TextChanged);
             // 
             // lblBackgroundImage
             // 
@@ -112,7 +112,6 @@ namespace ThoNohT.NohBoard.Forms.Style
             this.clrKeyboardBackground.PreviewShape = ThoNohT.NohBoard.Controls.ColorChooser.Shape.Square;
             this.clrKeyboardBackground.Size = new System.Drawing.Size(158, 26);
             this.clrKeyboardBackground.TabIndex = 2;
-            this.clrKeyboardBackground.ColorChanged += this.Control_ColorChanged;
             // 
             // AcceptButton2
             // 
@@ -140,7 +139,6 @@ namespace ThoNohT.NohBoard.Forms.Style
             this.pressedKeys.Location = new System.Drawing.Point(366, 13);
             this.pressedKeys.Name = "pressedKeys";
             this.pressedKeys.Size = new System.Drawing.Size(171, 331);
-            this.pressedKeys.StyleChanged += this.pressedKeys_SubStyleChanged;
             serializableColor1.Blue = ((byte)(0));
             serializableColor1.Green = ((byte)(0));
             serializableColor1.Red = ((byte)(0));
@@ -171,7 +169,6 @@ namespace ThoNohT.NohBoard.Forms.Style
             this.looseKeys.Location = new System.Drawing.Point(189, 13);
             this.looseKeys.Name = "looseKeys";
             this.looseKeys.Size = new System.Drawing.Size(171, 331);
-            this.looseKeys.StyleChanged += this.looseKeys_SubStyleChanged;
             serializableColor4.Blue = ((byte)(0));
             serializableColor4.Green = ((byte)(0));
             serializableColor4.Red = ((byte)(0));
@@ -226,6 +223,17 @@ namespace ThoNohT.NohBoard.Forms.Style
             this.defaultMouseSpeed.TabIndex = 16;
             this.defaultMouseSpeed.Title = "MouseSpeedIndicator";
             // 
+            // lblOutlineWarning
+            // 
+            this.lblOutlineWarning.AutoSize = true;
+            this.lblOutlineWarning.Location = new System.Drawing.Point(12, 267);
+            this.lblOutlineWarning.Name = "lblOutlineWarning";
+            this.lblOutlineWarning.Size = new System.Drawing.Size(173, 39);
+            this.lblOutlineWarning.TabIndex = 21;
+            this.lblOutlineWarning.Text = "Setting a smaller outline for pressed\r\nthan loose keys will show the loose\r\noutli" +
+    "ne behind the pressed key.";
+            this.lblOutlineWarning.Visible = false;
+            // 
             // KeyboardStyleForm
             // 
             this.AcceptButton = this.AcceptButton2;
@@ -233,6 +241,7 @@ namespace ThoNohT.NohBoard.Forms.Style
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.CancelButton2;
             this.ClientSize = new System.Drawing.Size(542, 372);
+            this.Controls.Add(this.lblOutlineWarning);
             this.Controls.Add(this.defaultMouseSpeed);
             this.Controls.Add(this.lblKeyboard);
             this.Controls.Add(this.pressedKeys);
@@ -242,12 +251,14 @@ namespace ThoNohT.NohBoard.Forms.Style
             this.Controls.Add(this.KeyboardGroup);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
             this.Name = "KeyboardStyleForm";
+            this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Keyboard Style";
             this.Load += new System.EventHandler(this.KeyboardStyleForm_Load);
             this.KeyboardGroup.ResumeLayout(false);
             this.KeyboardGroup.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -262,5 +273,6 @@ namespace ThoNohT.NohBoard.Forms.Style
         private MouseSpeedStylePanel defaultMouseSpeed;
         private System.Windows.Forms.TextBox txtBackgoundImage;
         private System.Windows.Forms.Label lblBackgroundImage;
+        private System.Windows.Forms.Label lblOutlineWarning;
     }
 }

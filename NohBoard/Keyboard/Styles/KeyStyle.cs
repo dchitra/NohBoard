@@ -34,7 +34,8 @@ namespace ThoNohT.NohBoard.Keyboard.Styles
         {
             Background = Color.FromArgb(100, 100, 100),
             Text = Color.FromArgb(0, 0, 0),
-            Outline = Color.FromArgb(0, 255, 0)
+            Outline = Color.FromArgb(0, 255, 0),
+            OutlineWidth = 1
         };
 
         /// <summary>
@@ -45,7 +46,8 @@ namespace ThoNohT.NohBoard.Keyboard.Styles
         {
             Background = Color.FromArgb(255, 255, 255),
             Text = Color.FromArgb(0, 0, 0),
-            Outline = Color.FromArgb(0, 255, 0)
+            Outline = Color.FromArgb(0, 255, 0),
+            OutlineWidth = 1
         };
 
         /// <summary>
@@ -59,6 +61,21 @@ namespace ThoNohT.NohBoard.Keyboard.Styles
                 Loose = this.Loose?.Clone(),
                 Pressed = this.Pressed?.Clone()
             };
+        }
+
+        /// <summary>
+        /// Checks whether the style has changes relative to the specified other style.
+        /// </summary>
+        /// <param name="other">The style to compare against.</param>
+        /// <returns>True if the style has changes, false otherwise.</returns>
+        public override bool IsChanged(ElementStyle other)
+        {
+            if (!(other is KeyStyle ks)) return true;
+
+            if (this.Loose is null != ks.Loose is null) return true;
+            if (this.Pressed is null != ks.Pressed is null) return true;
+
+            return (this.Loose?.IsChanged(ks.Loose) ?? false) || (this.Pressed?.IsChanged(ks.Pressed) ?? false);
         }
     }
 }

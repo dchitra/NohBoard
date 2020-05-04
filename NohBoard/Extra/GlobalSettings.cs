@@ -28,8 +28,25 @@ namespace ThoNohT.NohBoard.Extra
     /// Contains global settings for NohBoard.
     /// </summary>
     [DataContract(Name = "GlobalSettings", Namespace = "")]
-    public class GlobalSettings
+    public partial class GlobalSettings
     {
+        /// <summary>
+        /// Field for <see cref="UpdateInterval"/>.
+        /// </summary>
+        private int? updateInterval;
+
+        /// <summary>
+        /// Indicates whether there were changes made to the definition since the last save or load action.
+        /// Changes are tracked when undo history is pushed, and reset when a keyboard is loaded or saved.
+        /// </summary>
+        public static bool UnsavedDefinitionChanges { get; set; }
+
+        /// <summary>
+        /// Indicates whether there were changes made to the style since the last save or load action.
+        /// Changes are tracked when undo history is pushed, and reset when a style is loaded or saved.
+        /// </summary>
+        public static bool UnsavedStyleChanges { get; set; }
+
         /// <summary>
         /// Retrieves the global settings.
         /// </summary>
@@ -38,12 +55,12 @@ namespace ThoNohT.NohBoard.Extra
         /// <summary>
         /// The currently loaded keyboard definition.
         /// </summary>
-        public static KeyboardDefinition CurrentDefinition { get; set; }
+        public static KeyboardDefinition CurrentDefinition { get; private set; }
 
         /// <summary>
         /// The currently loaded keyboard style.
         /// </summary>
-        public static KeyboardStyle CurrentStyle { get; set; } = new KeyboardStyle();
+        public static KeyboardStyle CurrentStyle { get; private set; } = new KeyboardStyle();
 
         /// <summary>
         /// Any errors while loading settings.
@@ -55,6 +72,16 @@ namespace ThoNohT.NohBoard.Extra
         /// changed.
         /// </summary>
         public static int StyleDependencyCounter { get; set; } = 0;
+
+        #region General
+
+        /// <summary>
+        /// The window title. If empty, NohBoard with the version number will be shown.
+        /// </summary>
+        [DataMember]
+        public string WindowTitle { get; set; } = "";
+
+        #endregion General
 
         #region Input
 
@@ -76,6 +103,24 @@ namespace ThoNohT.NohBoard.Extra
         /// </summary>
         [DataMember]
         public bool MouseFromCenter { get; set; }
+
+        /// <summary>
+        /// The time in milliseconds for which to at least show key presses. Presses are still shown as long as they are
+        /// actually pressed. But if they are pressed for shorter than this duration, they will be held active longer.
+        /// </summary>
+        [DataMember]
+        public int PressHold { get; set; }
+
+        /// <summary>
+        /// The time in milliseconds between which the keyboard is updated and rendered again.
+        /// Minimum: 5ms (200fps), maximum: 60s, default: 33ms (30fps).
+        /// </summary>
+        [DataMember]
+        public int UpdateInterval
+        {
+            get => this.updateInterval ?? 33;
+            set => this.updateInterval = Math.Max(5, Math.Min(60000, value));
+        }
 
         #endregion Input
 
@@ -165,7 +210,7 @@ namespace ThoNohT.NohBoard.Extra
         /// </summary>
         [DataMember]
         public int Y { get; set; } = 25;
-        
+
         #endregion State
 
         #region Editing

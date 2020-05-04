@@ -125,17 +125,31 @@ namespace ThoNohT.NohBoard.Forms
         /// </returns>
         private List<SerializableFont> LoadKeyboard()
         {
-            if (GlobalSettings.CurrentDefinition == null) return new List<SerializableFont>();
+            if (GlobalSettings.CurrentDefinition == null)
+            {
+                HookManager.DisableKeyboardHook();
+                HookManager.DisableMouseHook();
+
+                return new List<SerializableFont>();
+            }
+            // Enable the mouse hook only if there are mouse keys on the screen.
+            if (GlobalSettings.CurrentDefinition.Elements.Any(x => !(x is KeyboardKeyDefinition)))
+                HookManager.EnableMouseHook();
+            else
+                HookManager.DisableMouseHook();
+
+            // Enable the keyboard hook only if there are keyboard keys on the screen.
+            if (GlobalSettings.CurrentDefinition.Elements.Any(x => x is KeyboardKeyDefinition))
+                HookManager.EnableKeyboardHook();
+            else
+                HookManager.DisableKeyboardHook();
 
             //Prompt to download any fonts we don't have yet.
             var missingFonts = this.CheckMissingFonts();
 
-            // Reset all edit mode related fields, as we should be no longer in edit mode.
-            this.undoHistory.Clear();
-            this.undoHistoryStyle.Clear();
-            this.redoHistory.Clear();
-            this.redoHistoryStyle.Clear();
+            GlobalSettings.Settings.InitUndoHistory();
 
+            // Reset all edit mode related fields, as we should be no longer in edit mode.
             if (this.mnuToggleEditMode.Checked)
             {
                 this.mnuToggleEditMode.Checked = false;
@@ -243,6 +257,17 @@ namespace ThoNohT.NohBoard.Forms
         /// </summary>
         private void mnuLoadKeyboard_Click(object sender, EventArgs e)
         {
+            if (GlobalSettings.UnsavedDefinitionChanges || GlobalSettings.UnsavedStyleChanges)
+            {
+                var result = MessageBox.Show(
+                    "You have unsaved changes. Loading a new keyboard will undo them. Are you sure you want to load a new keyboard?",
+                    "Discard changes",
+                    MessageBoxButtons.OKCancel,
+                    MessageBoxIcon.Warning);
+
+                if (result != DialogResult.OK) return;
+            }
+
             this.menuOpen = false;
 
             using (var manageForm = new LoadKeyboardForm())
@@ -257,8 +282,9 @@ namespace ThoNohT.NohBoard.Forms
                     var backupKbStyle = GlobalSettings.Settings.LoadedStyle;
                     var backupkbGlobalStyle = GlobalSettings.Settings.LoadedGlobalStyle;
 
-                    GlobalSettings.CurrentDefinition = kbDef;
-                    GlobalSettings.CurrentStyle = kbStyle ?? new KeyboardStyle();
+                    // Don't worry about undo history, it will be initialized alter in LoadKeyboard.
+                    GlobalSettings.Settings.UpdateDefinition(kbDef, false);
+                    GlobalSettings.Settings.UpdateStyle(kbStyle ?? new KeyboardStyle(), false);
 
                     GlobalSettings.Settings.LoadedCategory = kbDef.Category;
                     GlobalSettings.Settings.LoadedKeyboard = kbDef.Name;
@@ -267,13 +293,13 @@ namespace ThoNohT.NohBoard.Forms
 
                     try
                     {
-                        var missingKeyboards = this.LoadKeyboard();
-                        manageForm.ToggleFontsPanel(missingKeyboards);
+                        var missingFonts = this.LoadKeyboard();
+                        manageForm.ToggleFontsPanel(missingFonts);
                     }
                     catch (Exception ex)
                     {
-                        GlobalSettings.CurrentDefinition = backupDef;
-                        GlobalSettings.CurrentStyle = backupStyle;
+                        GlobalSettings.Settings.UpdateDefinition(backupDef, false);
+                        GlobalSettings.Settings.UpdateStyle(backupStyle, false);
 
                         GlobalSettings.Settings.LoadedCategory = backupCat;
                         GlobalSettings.Settings.LoadedKeyboard = backupKb;
@@ -293,8 +319,6 @@ namespace ThoNohT.NohBoard.Forms
         /// <summary>
         /// Saves the current definition under its default name.
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void mnuSaveDefinitionAsName_Click(object sender, EventArgs e)
         {
             this.menuOpen = false;
@@ -336,7 +360,9 @@ namespace ThoNohT.NohBoard.Forms
             }
 
             this.Location = new Point(GlobalSettings.Settings.X, GlobalSettings.Settings.Y);
-            this.Text = $"NohBoard {Version.Get}";
+            var title = GlobalSettings.Settings.WindowTitle;
+
+            this.Text = string.IsNullOrWhiteSpace(title) ? $"NohBoard {Version.Get}" : title;
 
             this.GetLatestVersion().Start();
 
@@ -345,8 +371,8 @@ namespace ThoNohT.NohBoard.Forms
             {
                 try
                 {
-                    GlobalSettings.CurrentDefinition = KeyboardDefinition
-                        .Load(GlobalSettings.Settings.LoadedCategory, GlobalSettings.Settings.LoadedKeyboard);
+                    GlobalSettings.Settings.UpdateDefinition(KeyboardDefinition
+                        .Load(GlobalSettings.Settings.LoadedCategory, GlobalSettings.Settings.LoadedKeyboard), false);
                 }
                 catch (Exception ex)
                 {
@@ -363,9 +389,9 @@ namespace ThoNohT.NohBoard.Forms
             {
                 try
                 {
-                    GlobalSettings.CurrentStyle = KeyboardStyle.Load(
+                    GlobalSettings.Settings.UpdateStyle(KeyboardStyle.Load(
                         GlobalSettings.Settings.LoadedStyle,
-                        GlobalSettings.Settings.LoadedGlobalStyle);
+                        GlobalSettings.Settings.LoadedGlobalStyle), false);
                     this.LoadKeyboard();
                     this.ResetBackBrushes();
                 }
@@ -376,11 +402,17 @@ namespace ThoNohT.NohBoard.Forms
                         $"Failed to load style {GlobalSettings.Settings.LoadedStyle}, loading default style.",
                         "Error loading style.");
                 }
+
+                // Enable the mouse hook only if there are mouse keys on the screen.
+                if (GlobalSettings.CurrentDefinition.Elements.Any(x => !(x is KeyboardKeyDefinition)))
+                    HookManager.EnableMouseHook();
+
+                // Enable the keyboard hook only if there are keyboard keys on the screen.
+                if (GlobalSettings.CurrentDefinition.Elements.Any(x => x is KeyboardKeyDefinition))
+                    HookManager.EnableKeyboardHook();
             }
 
-            HookManager.EnableMouseHook();
-            HookManager.EnableKeyboardHook();
-
+            this.UpdateTimer.Interval = GlobalSettings.Settings.UpdateInterval;
             this.UpdateTimer.Enabled = true;
             this.KeyCheckTimer.Enabled = true;
 
@@ -405,6 +437,21 @@ namespace ThoNohT.NohBoard.Forms
         /// </summary>
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
+            if (GlobalSettings.UnsavedDefinitionChanges || GlobalSettings.UnsavedStyleChanges)
+            {
+                var result = MessageBox.Show(
+                    "You have unsaved changes. If you exit now you will lose them. Are you sure you want to exit?",
+                    "Discard changes",
+                    MessageBoxButtons.OKCancel,
+                    MessageBoxIcon.Warning);
+
+                if (result != DialogResult.OK)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+            }
+
             HookManager.DisableMouseHook();
             HookManager.DisableKeyboardHook();
 
@@ -420,6 +467,10 @@ namespace ThoNohT.NohBoard.Forms
             HookManager.TrapMouse = GlobalSettings.Settings.TrapMouse;
             HookManager.TrapToggleKeyCode = GlobalSettings.Settings.TrapToggleKeyCode;
             HookManager.ScrollHold = GlobalSettings.Settings.ScrollHold;
+            HookManager.PressHold = GlobalSettings.Settings.PressHold;
+
+            var title = GlobalSettings.Settings.WindowTitle;
+            this.Text = string.IsNullOrWhiteSpace(title) ? $"NohBoard {Version.Get}" : title;
 
             this.LoadKeyboard();
         }
@@ -548,14 +599,16 @@ namespace ThoNohT.NohBoard.Forms
                 new Rectangle(0, 0, GlobalSettings.CurrentDefinition.Width, GlobalSettings.CurrentDefinition.Height));
 
             // Render all keys.
+            KeyboardState.CheckKeyHolds(GlobalSettings.Settings.PressHold);
             var kbKeys = KeyboardState.PressedKeys;
             var mouseKeys = MouseState.PressedKeys.Select(k => (int)k).ToList();
+            MouseState.CheckKeyHolds(GlobalSettings.Settings.PressHold);
             MouseState.CheckScrollAndMovement();
             var scrollCounts = MouseState.ScrollCounts;
             var allDefs = GlobalSettings.CurrentDefinition.Elements;
             foreach (var def in allDefs)
             {
-                Render(e.Graphics, def, allDefs, kbKeys, mouseKeys, scrollCounts, false);
+                this.Render(e.Graphics, def, allDefs, kbKeys, mouseKeys, scrollCounts, false);
             }
 
             // Draw the element being manipulated
@@ -567,13 +620,13 @@ namespace ThoNohT.NohBoard.Forms
 
                 if (this.selectedDefinition != null)
                 {
-                    Render(e.Graphics, this.selectedDefinition, allDefs, kbKeys, mouseKeys, scrollCounts, true);
+                    this.Render(e.Graphics, this.selectedDefinition, allDefs, kbKeys, mouseKeys, scrollCounts, true);
                     this.selectedDefinition.RenderSelected(e.Graphics);
                 }
             }
             else
             {
-                this.currentlyManipulating.Item2.RenderEditing(e.Graphics);
+                this.currentlyManipulating.Value.definition.RenderEditing(e.Graphics);
             }
 
             base.OnPaint(e);
@@ -645,8 +698,8 @@ namespace ThoNohT.NohBoard.Forms
         /// </summary>
         private void KeyCheckTimer_Tick(object sender, EventArgs e)
         {
-            MouseState.CheckKeys();
-            KeyboardState.CheckKeys();
+            MouseState.CheckKeys(GlobalSettings.Settings.PressHold);
+            KeyboardState.CheckKeys(GlobalSettings.Settings.PressHold);
         }
 
         #endregion Rendering

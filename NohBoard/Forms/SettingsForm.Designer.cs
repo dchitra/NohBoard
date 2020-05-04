@@ -54,6 +54,9 @@ namespace ThoNohT.NohBoard.Forms
             this.chkTrapMouse = new System.Windows.Forms.CheckBox();
             this.lblTrapping = new System.Windows.Forms.Label();
             this.InputGroup = new System.Windows.Forms.GroupBox();
+            this.lblPressHold = new System.Windows.Forms.Label();
+            this.udPressHold = new System.Windows.Forms.NumericUpDown();
+            this.lblPresHoldDuration = new System.Windows.Forms.Label();
             this.chkMouseFromCenter = new System.Windows.Forms.CheckBox();
             this.udScrollHold = new System.Windows.Forms.NumericUpDown();
             this.udMouseSensitivity = new System.Windows.Forms.NumericUpDown();
@@ -68,11 +71,16 @@ namespace ThoNohT.NohBoard.Forms
             this.rdbAlwaysLower = new System.Windows.Forms.RadioButton();
             this.rdbAlwaysCaps = new System.Windows.Forms.RadioButton();
             this.rdbFollowKeystate = new System.Windows.Forms.RadioButton();
+            this.GeneralGroup = new System.Windows.Forms.GroupBox();
+            this.lblTitle = new System.Windows.Forms.Label();
+            this.txtTitle = new System.Windows.Forms.TextBox();
             this.TrapGroup.SuspendLayout();
             this.InputGroup.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.udPressHold)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.udScrollHold)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.udMouseSensitivity)).BeginInit();
             this.CapitalizationGroup.SuspendLayout();
+            this.GeneralGroup.SuspendLayout();
             this.SuspendLayout();
             // 
             // TrapGroup
@@ -82,9 +90,9 @@ namespace ThoNohT.NohBoard.Forms
             this.TrapGroup.Controls.Add(this.chkTrapKeyboard);
             this.TrapGroup.Controls.Add(this.chkTrapMouse);
             this.TrapGroup.Controls.Add(this.lblTrapping);
-            this.TrapGroup.Location = new System.Drawing.Point(206, 13);
+            this.TrapGroup.Location = new System.Drawing.Point(206, 68);
             this.TrapGroup.Name = "TrapGroup";
-            this.TrapGroup.Size = new System.Drawing.Size(203, 130);
+            this.TrapGroup.Size = new System.Drawing.Size(203, 136);
             this.TrapGroup.TabIndex = 1;
             this.TrapGroup.TabStop = false;
             this.TrapGroup.Text = "Trapping";
@@ -144,6 +152,9 @@ namespace ThoNohT.NohBoard.Forms
             // 
             // InputGroup
             // 
+            this.InputGroup.Controls.Add(this.lblPressHold);
+            this.InputGroup.Controls.Add(this.udPressHold);
+            this.InputGroup.Controls.Add(this.lblPresHoldDuration);
             this.InputGroup.Controls.Add(this.chkMouseFromCenter);
             this.InputGroup.Controls.Add(this.udScrollHold);
             this.InputGroup.Controls.Add(this.udMouseSensitivity);
@@ -151,10 +162,40 @@ namespace ThoNohT.NohBoard.Forms
             this.InputGroup.Controls.Add(this.lblMouseSensititivy);
             this.InputGroup.Location = new System.Drawing.Point(13, 13);
             this.InputGroup.Name = "InputGroup";
-            this.InputGroup.Size = new System.Drawing.Size(187, 130);
+            this.InputGroup.Size = new System.Drawing.Size(187, 191);
             this.InputGroup.TabIndex = 2;
             this.InputGroup.TabStop = false;
             this.InputGroup.Text = "Input";
+            // 
+            // lblPressHold
+            // 
+            this.lblPressHold.AutoSize = true;
+            this.lblPressHold.Location = new System.Drawing.Point(6, 105);
+            this.lblPressHold.Name = "lblPressHold";
+            this.lblPressHold.Size = new System.Drawing.Size(142, 13);
+            this.lblPressHold.TabIndex = 12;
+            this.lblPressHold.Text = "Show keypresses for at least";
+            // 
+            // udPressHold
+            // 
+            this.udPressHold.Location = new System.Drawing.Point(26, 123);
+            this.udPressHold.Maximum = new decimal(new int[] {
+            1000,
+            0,
+            0,
+            0});
+            this.udPressHold.Name = "udPressHold";
+            this.udPressHold.Size = new System.Drawing.Size(49, 20);
+            this.udPressHold.TabIndex = 11;
+            // 
+            // lblPresHoldDuration
+            // 
+            this.lblPresHoldDuration.AutoSize = true;
+            this.lblPresHoldDuration.Location = new System.Drawing.Point(81, 125);
+            this.lblPresHoldDuration.Name = "lblPresHoldDuration";
+            this.lblPresHoldDuration.Size = new System.Drawing.Size(20, 13);
+            this.lblPresHoldDuration.TabIndex = 10;
+            this.lblPresHoldDuration.Text = "ms";
             // 
             // chkMouseFromCenter
             // 
@@ -229,7 +270,7 @@ namespace ThoNohT.NohBoard.Forms
             // 
             // OkButton
             // 
-            this.OkButton.Location = new System.Drawing.Point(334, 245);
+            this.OkButton.Location = new System.Drawing.Point(334, 306);
             this.OkButton.Name = "OkButton";
             this.OkButton.Size = new System.Drawing.Size(75, 23);
             this.OkButton.TabIndex = 7;
@@ -240,7 +281,7 @@ namespace ThoNohT.NohBoard.Forms
             // CancelButton2
             // 
             this.CancelButton2.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.CancelButton2.Location = new System.Drawing.Point(253, 245);
+            this.CancelButton2.Location = new System.Drawing.Point(253, 306);
             this.CancelButton2.Name = "CancelButton2";
             this.CancelButton2.Size = new System.Drawing.Size(75, 23);
             this.CancelButton2.TabIndex = 6;
@@ -255,7 +296,7 @@ namespace ThoNohT.NohBoard.Forms
             this.CapitalizationGroup.Controls.Add(this.rdbAlwaysLower);
             this.CapitalizationGroup.Controls.Add(this.rdbAlwaysCaps);
             this.CapitalizationGroup.Controls.Add(this.rdbFollowKeystate);
-            this.CapitalizationGroup.Location = new System.Drawing.Point(13, 148);
+            this.CapitalizationGroup.Location = new System.Drawing.Point(10, 210);
             this.CapitalizationGroup.Name = "CapitalizationGroup";
             this.CapitalizationGroup.Size = new System.Drawing.Size(396, 91);
             this.CapitalizationGroup.TabIndex = 8;
@@ -325,13 +366,41 @@ namespace ThoNohT.NohBoard.Forms
             this.rdbFollowKeystate.UseVisualStyleBackColor = true;
             this.rdbFollowKeystate.CheckedChanged += new System.EventHandler(this.rdbFollowKeystate_CheckedChanged);
             // 
+            // GeneralGroup
+            // 
+            this.GeneralGroup.Controls.Add(this.lblTitle);
+            this.GeneralGroup.Controls.Add(this.txtTitle);
+            this.GeneralGroup.Location = new System.Drawing.Point(206, 12);
+            this.GeneralGroup.Name = "GeneralGroup";
+            this.GeneralGroup.Size = new System.Drawing.Size(203, 50);
+            this.GeneralGroup.TabIndex = 9;
+            this.GeneralGroup.TabStop = false;
+            this.GeneralGroup.Text = "General";
+            // 
+            // lblTitle
+            // 
+            this.lblTitle.AutoSize = true;
+            this.lblTitle.Location = new System.Drawing.Point(7, 22);
+            this.lblTitle.Name = "lblTitle";
+            this.lblTitle.Size = new System.Drawing.Size(68, 13);
+            this.lblTitle.TabIndex = 1;
+            this.lblTitle.Text = "Window title:";
+            // 
+            // txtTitle
+            // 
+            this.txtTitle.Location = new System.Drawing.Point(81, 19);
+            this.txtTitle.Name = "txtTitle";
+            this.txtTitle.Size = new System.Drawing.Size(92, 20);
+            this.txtTitle.TabIndex = 0;
+            // 
             // SettingsForm
             // 
             this.AcceptButton = this.OkButton;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.CancelButton2;
-            this.ClientSize = new System.Drawing.Size(421, 279);
+            this.ClientSize = new System.Drawing.Size(422, 342);
+            this.Controls.Add(this.GeneralGroup);
             this.Controls.Add(this.CapitalizationGroup);
             this.Controls.Add(this.CancelButton2);
             this.Controls.Add(this.OkButton);
@@ -339,6 +408,7 @@ namespace ThoNohT.NohBoard.Forms
             this.Controls.Add(this.TrapGroup);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
             this.Name = "SettingsForm";
+            this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Settings";
             this.Load += new System.EventHandler(this.SettingsForm_Load);
@@ -346,10 +416,13 @@ namespace ThoNohT.NohBoard.Forms
             this.TrapGroup.PerformLayout();
             this.InputGroup.ResumeLayout(false);
             this.InputGroup.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.udPressHold)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.udScrollHold)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.udMouseSensitivity)).EndInit();
             this.CapitalizationGroup.ResumeLayout(false);
             this.CapitalizationGroup.PerformLayout();
+            this.GeneralGroup.ResumeLayout(false);
+            this.GeneralGroup.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -377,5 +450,11 @@ namespace ThoNohT.NohBoard.Forms
         private CheckBox chkFollowShiftCapsSensitive;
         private Label lblFollowShift;
         private CheckBox chkFollowShiftCapsInsensitive;
+        private GroupBox GeneralGroup;
+        private Label lblTitle;
+        private TextBox txtTitle;
+        private Label lblPresHoldDuration;
+        private NumericUpDown udPressHold;
+        private Label lblPressHold;
     }
 }

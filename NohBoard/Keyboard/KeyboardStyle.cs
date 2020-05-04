@@ -54,7 +54,7 @@ namespace ThoNohT.NohBoard.Keyboard
         public bool IsGlobal => !this.ElementStyles.Any();
 
         #region The keyboard itself
-        
+
         /// <summary>
         /// The background color of the keyboard.
         /// </summary>
@@ -107,9 +107,72 @@ namespace ThoNohT.NohBoard.Keyboard
                 DefaultKeyStyle = (KeyStyle) this.DefaultKeyStyle.Clone(),
                 DefaultMouseSpeedIndicatorStyle =
                     (MouseSpeedIndicatorStyle) this.DefaultMouseSpeedIndicatorStyle.Clone(),
-                ElementStyles = this.ElementStyles.Select(s => Tuple.Create(s.Key, s.Value.Clone()))
+                ElementStyles = this.ElementStyles.Select(s => (s.Key, s.Value.Clone()))
                     .ToDictionary(s => s.Item1, s => s.Item2)
             };
+        }
+
+
+        /// <summary>
+        /// Returns a value indicating whether the specified element has a custom style.
+        /// </summary>
+        /// <param name="elementId">The identifier of the element to check for a style.</param>
+        /// <returns>True if there is a style for the element, false otherwise.</returns>
+        public bool ElementIsStyled(int elementId)
+        {
+            return this.ElementStyles.ContainsKey(elementId);
+        }
+
+        /// <summary>
+        /// Sets the style for the specified element.
+        /// </summary>
+        /// <param name="index">The identifier of the element to set the style for.</param>
+        /// <param name="style">The style to set.</param>
+        /// <returns>A new version of this <see cref="KeyboardStyle"/> with the element style set.</returns>
+        public KeyboardStyle SetElementStyle(int id, ElementStyle style)
+        {
+            var result = this.Clone();
+            if (this.ElementStyles.TryGetValue(id, out _))
+            {
+                result.ElementStyles[id] = style.Clone();
+                return result;
+            }
+            else
+            {
+                result.ElementStyles.Add(id, style.Clone());
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Removes the element style for the specified element.
+        /// </summary>
+        /// <param name="id">The identifier of the element to set the style for.</param>
+        /// <returns>A new version of this <see cref="KeyboardStyle"/> with the element style removed.</returns>
+        public KeyboardStyle RemoveElementStyle(int id)
+        {
+            var result = this.Clone();
+            result.ElementStyles.Remove(id);
+            return result;
+        }
+
+        /// <summary>
+        /// Checks whether the style has changes relative to the specified other style.
+        /// </summary>
+        /// <param name="other">The style to compare against.</param>
+        /// <returns>True if the style has changes, false otherwise.</returns>
+        public bool IsChanged(KeyboardStyle other)
+        {
+            if (this.BackgroundColor.IsChanged(other.BackgroundColor)) return true;
+            if (this.BackgroundImageFileName != other.BackgroundImageFileName) return true;
+            if (this.BackgroundColor != other.BackgroundColor) return true;
+            if (this.DefaultKeyStyle.IsChanged(other.DefaultKeyStyle)) return true;
+            if (this.DefaultMouseSpeedIndicatorStyle.IsChanged(other.DefaultMouseSpeedIndicatorStyle)) return true;
+
+            if (!this.ElementStyles.Keys.ToSet().SetEquals(other.ElementStyles.Keys)) return true;
+
+            // the same element ids are present, now compare each.
+            return this.ElementStyles.Any(e => e.Value.IsChanged(other.ElementStyles[e.Key]));
         }
 
         /// <summary>
@@ -129,6 +192,9 @@ namespace ThoNohT.NohBoard.Keyboard
 
             FileHelper.EnsurePathExists(filename);
             FileHelper.Serialize(filename, this);
+
+            // The style was saved, so there are now no unsaved style changes.
+            GlobalSettings.UnsavedStyleChanges = false;
         }
 
         /// <summary>

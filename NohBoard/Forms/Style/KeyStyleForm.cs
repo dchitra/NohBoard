@@ -20,6 +20,7 @@ namespace ThoNohT.NohBoard.Forms.Style
     using System;
     using System.Windows.Forms;
     using Keyboard.Styles;
+    using ThoNohT.NohBoard.Extra;
 
     /// <summary>
     /// The form used to update the style of a key.
@@ -37,7 +38,7 @@ namespace ThoNohT.NohBoard.Forms.Style
         /// The style to revert to if the overwrite checkbox is unchecked.
         /// </summary>
         private readonly KeyStyle defaultStyle;
-        
+
         /// <summary>
         /// The currently loaded style.
         /// </summary>
@@ -52,6 +53,11 @@ namespace ThoNohT.NohBoard.Forms.Style
         /// the user interface, not when it is changed programmatically.
         /// </summary>
         public new event Action<KeyStyle> StyleChanged;
+
+        /// <summary>
+        /// The event that is invoked when the style is saved.
+        /// </summary>
+        public event Action StyleSaved;
 
         #endregion Events
 
@@ -68,13 +74,13 @@ namespace ThoNohT.NohBoard.Forms.Style
             if (defaultStyle.Loose == null) throw new ArgumentNullException(nameof(defaultStyle));
             if (defaultStyle.Pressed == null) throw new ArgumentNullException(nameof(defaultStyle));
 
-            this.initialStyle = initialStyle ?? new KeyStyle
+            this.initialStyle = ((KeyStyle)initialStyle?.Clone()) ?? new KeyStyle
             {
                 Loose = null,
                 Pressed = null
             };
-            this.defaultStyle = defaultStyle;
-            this.currentStyle = (KeyStyle) this.initialStyle.Clone();
+            this.defaultStyle = (KeyStyle)defaultStyle?.Clone();
+            this.currentStyle = (KeyStyle)this.initialStyle.Clone();
             this.InitializeComponent();
         }
 
@@ -95,6 +101,8 @@ namespace ThoNohT.NohBoard.Forms.Style
             this.loose.Enabled = this.chkOverwriteLoose.Checked;
             this.pressed.Enabled = this.chkOverwritePressed.Checked;
 
+            this.UpdateOutlineWarning();
+
             // Only add the event handlers after the initial style has been set.
             this.pressed.StyleChanged += this.pressedKeys_SubStyleChanged;
             this.loose.StyleChanged += this.looseKeys_SubStyleChanged;
@@ -105,6 +113,7 @@ namespace ThoNohT.NohBoard.Forms.Style
         /// </summary>
         private void AcceptButton2_Click(object sender, EventArgs e)
         {
+            this.StyleSaved?.Invoke();
             this.DialogResult = DialogResult.OK;
         }
 
@@ -121,10 +130,11 @@ namespace ThoNohT.NohBoard.Forms.Style
         /// Handles change of the loose style, sets the new style and invokes the changed event.
         /// </summary>
         /// <param name="style">The new style.</param>
-        private void looseKeys_SubStyleChanged(Keyboard.Styles.KeySubStyle style)
+        private void looseKeys_SubStyleChanged(KeySubStyle style)
         {
             this.currentStyle.Loose = style;
             this.StyleChanged?.Invoke(this.currentStyle);
+            this.UpdateOutlineWarning();
         }
 
         /// <summary>
@@ -135,6 +145,7 @@ namespace ThoNohT.NohBoard.Forms.Style
         {
             this.currentStyle.Pressed = style;
             this.StyleChanged?.Invoke(this.currentStyle);
+            this.UpdateOutlineWarning();
         }
 
         /// <summary>
@@ -155,6 +166,7 @@ namespace ThoNohT.NohBoard.Forms.Style
             }
 
             this.StyleChanged?.Invoke(this.currentStyle);
+            this.UpdateOutlineWarning();
         }
 
         /// <summary>
@@ -175,6 +187,22 @@ namespace ThoNohT.NohBoard.Forms.Style
             }
 
             this.StyleChanged?.Invoke(this.currentStyle);
+
+            this.UpdateOutlineWarning();
+        }
+
+        /// <summary>
+        /// Updates the visibility of the outline warning.
+        /// </summary>
+        private void UpdateOutlineWarning()
+        {
+            int OutlineWidth(KeySubStyle subStyle, KeySubStyle globalSubStyle) =>
+                (subStyle ?? globalSubStyle).ShowOutline ? (subStyle ?? globalSubStyle).OutlineWidth : 0;
+
+            var def = GlobalSettings.CurrentStyle.DefaultKeyStyle;
+
+            this.lblOutlineWarning.Visible =
+                OutlineWidth(this.currentStyle.Pressed, def.Pressed) < OutlineWidth(this.currentStyle.Loose, def.Loose);
         }
 
         #endregion Methods

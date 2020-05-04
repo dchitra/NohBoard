@@ -81,6 +81,10 @@ namespace ThoNohT.NohBoard.Forms
 
             this.chkMouseFromCenter.Checked = GlobalSettings.Settings.MouseFromCenter;
 
+            this.txtTitle.Text = GlobalSettings.Settings.WindowTitle;
+
+            this.udPressHold.Value = GlobalSettings.Settings.PressHold;
+
             this.SetToolTips();
         }
 
@@ -126,6 +130,13 @@ namespace ThoNohT.NohBoard.Forms
                 "Some games keep resetting the cursor position to the center of the screen. This setting uses " + nl +
                 "this fact and compares the current mouse position to the center of the screen, rather than its " + nl +
                 "last position.");
+
+            tooltip.SetToolTip(
+                this.txtTitle,
+                "Fill in if you want a custom window title." + nl
+                + "If left empty, the default window title of \"NohBoard + version number\" will be shown.");
+
+            tooltip.SetToolTip(this.udPressHold, "TODO: Tooltip about holding presses.");
         }
 
         /// <summary>
@@ -151,6 +162,10 @@ namespace ThoNohT.NohBoard.Forms
 
             GlobalSettings.Settings.MouseFromCenter = this.chkMouseFromCenter.Checked;
             MouseState.SetMouseFromCenter(GlobalSettings.Settings.MouseFromCenter);
+
+            GlobalSettings.Settings.WindowTitle = this.txtTitle.Text;
+
+            GlobalSettings.Settings.PressHold = (int)this.udPressHold.Value;
 
             GlobalSettings.Save();
 

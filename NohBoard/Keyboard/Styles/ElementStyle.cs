@@ -32,5 +32,12 @@ namespace ThoNohT.NohBoard.Keyboard.Styles
         /// </summary>
         /// <returns>The cloned element style.</returns>
         public abstract ElementStyle Clone();
+
+        /// <summary>
+        /// Checks whether the style has changes relative to the specified other style.
+        /// </summary>
+        /// <param name="other">The style to compare against.</param>
+        /// <returns>True if the style has changes, false otherwise.</returns>
+        public abstract bool IsChanged(ElementStyle other);
     }
 }
